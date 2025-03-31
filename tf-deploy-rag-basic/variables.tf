@@ -26,3 +26,9 @@ variable "bucket_name" {
   type        = string
   description = "Nombre base del bucket S3 que se creará para almacenar los archivos relacionados, se añadirá un sufijo aleatorio"
 }
+
+variable "deploy_ui" {
+  type        = bool
+  description = "Controla si se despliega la interfaz de usuario web (true) o solo el backend (false)"
+  default     = true
+}

@@ -155,6 +155,16 @@ resource "aws_apigatewayv2_api" "bedrock_agent_api" {
   name          = "bedrock-agent-api-${random_pet.naming.id}"
   protocol_type = "HTTP"
   description   = "API Gateway para integración con el agente de Bedrock a través de Lambda"
+
+  # Configuración de CORS
+  cors_configuration {
+    allow_origins     = var.deploy_ui ? ["*"] : [] # CORS sólo si se despliega la UI
+    allow_methods     = ["GET", "POST", "OPTIONS"]
+    allow_headers     = ["Content-Type", "Authorization", "X-Amz-Date", "X-Api-Key"]
+    expose_headers    = ["Content-Type", "X-Amz-Date"]
+    allow_credentials = false # Cambiado a false porque allow_origins es "*"
+    max_age           = 300   # Tiempo en segundos que el navegador puede cachear la respuesta preflight
+  }
 }
 
 # Integración entre API Gateway y la función Lambda
@@ -174,10 +184,18 @@ resource "aws_apigatewayv2_route" "default_route" {
   target    = "integrations/${aws_apigatewayv2_integration.lambda_integration.id}"
 }
 
+# Ruta adicional para manejar el método OPTIONS (necesario para CORS)
+resource "aws_apigatewayv2_route" "options_route" {
+  count     = var.deploy_ui ? 1 : 0 # Solo crear si se despliega la UI
+  api_id    = aws_apigatewayv2_api.bedrock_agent_api.id
+  route_key = "OPTIONS /agent"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda_integration.id}"
+}
+
 # Etapa de producción para la API con despliegue automático
 resource "aws_apigatewayv2_stage" "default" {
   api_id      = aws_apigatewayv2_api.bedrock_agent_api.id
-  name        = "prod"
+  name        = "dev" # Cambiado a "dev" para hacerlo más claro
   auto_deploy = true
 }
 
@@ -190,6 +208,176 @@ resource "aws_lambda_permission" "apigw_lambda" {
 
   # El ARN de origen permite invocar solo desde este API Gateway específico
   source_arn = "${aws_apigatewayv2_api.bedrock_agent_api.execution_arn}/*/*/agent"
+}
+
+# ==============================================================================
+# CONFIGURACIÓN DEL HOSTING WEB EN S3 PARA EL FRONTEND (Condicional)
+# ==============================================================================
+
+# Bucket S3 para alojar el frontend (solo si deploy_ui = true)
+resource "aws_s3_bucket" "frontend_bucket" {
+  count         = var.deploy_ui ? 1 : 0
+  bucket        = "frontend-bedrock-agent-${random_pet.naming.id}"
+  force_destroy = true # Permitir la eliminación del bucket incluso con contenido
+}
+
+# Configuración para habilitar el alojamiento web estático
+resource "aws_s3_bucket_website_configuration" "frontend_website" {
+  count  = var.deploy_ui ? 1 : 0
+  bucket = aws_s3_bucket.frontend_bucket[0].id
+
+  index_document {
+    suffix = "index.html"
+  }
+
+  error_document {
+    key = "index.html" # SPA routing: todas las rutas redirigen a index.html
+  }
+}
+
+# Configuración de control de acceso público - ESTA ES LA PARTE IMPORTANTE
+resource "aws_s3_bucket_public_access_block" "frontend_public_access" {
+  count                   = var.deploy_ui ? 1 : 0
+  bucket                  = aws_s3_bucket.frontend_bucket[0].id
+  block_public_acls       = false
+  block_public_policy     = false
+  ignore_public_acls      = false
+  restrict_public_buckets = false
+
+  # Esto debe ejecutarse antes de aplicar la política
+}
+
+# Propiedad del bucket
+resource "aws_s3_bucket_ownership_controls" "frontend_bucket_ownership" {
+  count  = var.deploy_ui ? 1 : 0
+  bucket = aws_s3_bucket.frontend_bucket[0].id
+  rule {
+    object_ownership = "BucketOwnerPreferred"
+  }
+
+  # Dependencia explícita de la configuración de acceso público
+  depends_on = [
+    aws_s3_bucket_public_access_block.frontend_public_access[0]
+  ]
+}
+
+# Configuración de ACL
+resource "aws_s3_bucket_acl" "frontend_bucket_acl" {
+  count = var.deploy_ui ? 1 : 0
+  depends_on = [
+    aws_s3_bucket_ownership_controls.frontend_bucket_ownership[0],
+    aws_s3_bucket_public_access_block.frontend_public_access[0],
+  ]
+
+  bucket = aws_s3_bucket.frontend_bucket[0].id
+  acl    = "public-read"
+}
+
+# Política que permite el acceso público para lectura
+# Esta política debe aplicarse después de configurar el acceso público
+resource "aws_s3_bucket_policy" "frontend_bucket_policy" {
+  count  = var.deploy_ui ? 1 : 0
+  bucket = aws_s3_bucket.frontend_bucket[0].id
+
+  # Dependencia explícita para asegurar el orden correcto
+  depends_on = [
+    aws_s3_bucket_public_access_block.frontend_public_access[0],
+    aws_s3_bucket_ownership_controls.frontend_bucket_ownership[0],
+    aws_s3_bucket_acl.frontend_bucket_acl[0]
+  ]
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid       = "PublicReadGetObject"
+        Effect    = "Allow"
+        Principal = "*"
+        Action    = "s3:GetObject"
+        Resource  = "${aws_s3_bucket.frontend_bucket[0].arn}/*"
+      }
+    ]
+  })
+}
+
+# ==============================================================================
+# COMPILACIÓN Y DESPLIEGUE DE LA APLICACIÓN REACT (Condicional)
+# ==============================================================================
+
+# Modificar la URL de la API en el frontend antes de compilar
+resource "null_resource" "update_api_url" {
+  count = var.deploy_ui ? 1 : 0
+  # Se vuelve a ejecutar cada vez que cambia la URL de la API o el ID del bucket
+  triggers = {
+    api_url   = "${aws_apigatewayv2_stage.default.invoke_url}/agent"
+    bucket_id = aws_s3_bucket.frontend_bucket[0].id
+  }
+
+  provisioner "local-exec" {
+    working_dir = "${path.module}/../agent-react-app"
+    # Usar comandos multiplataforma para Windows y Unix
+    command = <<-EOT
+      %{if substr(pathexpand("~"), 0, 1) == "/"~}
+      # Comando para sistemas Unix (Linux/macOS)
+      cat > .env.production << EOF
+      VITE_API_URL=${aws_apigatewayv2_stage.default.invoke_url}/agent
+      EOF
+      %{else~}
+      # Comando para Windows
+      echo VITE_API_URL=${aws_apigatewayv2_stage.default.invoke_url}/agent > .env.production
+      %{endif~}
+    EOT
+    interpreter = [
+      # Usar powershell en Windows y bash en Unix
+      "%{if substr(pathexpand("~"), 0, 1) == "/"}bash%{else}powershell%{endif}",
+      "-c"
+    ]
+  }
+}
+
+# Compilar y desplegar la aplicación React
+resource "null_resource" "build_and_deploy_frontend" {
+  count = var.deploy_ui ? 1 : 0
+  depends_on = [
+    null_resource.update_api_url[0],
+    aws_s3_bucket.frontend_bucket[0],
+    aws_s3_bucket_website_configuration.frontend_website[0],
+    aws_s3_bucket_policy.frontend_bucket_policy[0],
+    aws_s3_bucket_acl.frontend_bucket_acl[0]
+  ]
+
+  # Se vuelve a ejecutar cada vez que cambia la URL de la API o el ID del bucket
+  triggers = {
+    api_url   = "${aws_apigatewayv2_stage.default.invoke_url}/agent"
+    bucket_id = aws_s3_bucket.frontend_bucket[0].id
+  }
+
+  provisioner "local-exec" {
+    working_dir = "${path.module}/../agent-react-app"
+    # Comandos multiplataforma para compilar y desplegar
+    command = <<-EOT
+      %{if substr(pathexpand("~"), 0, 1) == "/"~}
+      # Comandos para sistemas Unix (Linux/macOS)
+      echo "Compilando la aplicación React..."
+      npm install
+      npm run build
+      echo "Desplegando la aplicación en S3..."
+      aws s3 sync dist/ s3://${aws_s3_bucket.frontend_bucket[0].bucket} --delete
+      %{else~}
+      # Comandos para Windows
+      Write-Host "Compilando la aplicación React..."
+      npm install
+      npm run build
+      Write-Host "Desplegando la aplicación en S3..."
+      aws s3 sync dist/ s3://${aws_s3_bucket.frontend_bucket[0].bucket} --delete
+      %{endif~}
+    EOT
+    interpreter = [
+      # Usar powershell en Windows y bash en Unix
+      "%{if substr(pathexpand("~"), 0, 1) == "/"}bash%{else}powershell%{endif}",
+      "-c"
+    ]
+  }
 }
 
 

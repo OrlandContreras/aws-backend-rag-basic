@@ -22,3 +22,13 @@ output "agent_alias_id" {
   value       = aws_bedrockagent_agent_alias.bedrock_agent_alias.agent_alias_id
   description = "ID del alias del agente Bedrock"
 }
+
+output "frontend_website_url" {
+  value       = var.deploy_ui ? "http://${aws_s3_bucket.frontend_bucket[0].bucket}.s3-website-${data.aws_region.current.name}.amazonaws.com" : "UI no desplegada (deploy_ui = false)"
+  description = "URL del sitio web estático para el frontend en S3 (si está habilitado)"
+}
+
+output "ui_deployed" {
+  value       = var.deploy_ui
+  description = "Indica si la interfaz de usuario ha sido desplegada"
+}

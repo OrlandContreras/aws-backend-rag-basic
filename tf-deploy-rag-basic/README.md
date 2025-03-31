@@ -13,13 +13,14 @@ La infraestructura desplegada incluye los siguientes componentes:
 │  API Gateway   │───▶│     Lambda     │───▶│ Bedrock Agent  │
 │                │    │                │    │                │
 └────────────────┘    └────────────────┘    └────────────────┘
-                             │
-                             │
-                      ┌──────▼───────┐
-                      │              │
-                      │   IAM Roles  │
-                      │              │
-                      └──────────────┘
+                             │                      │
+                             │                      │
+                             │                      ▼
+                      ┌──────▼───────┐    ┌─────────────────────┐
+                      │              │    │                     │
+                      │   IAM Roles  │    │  Base de Datos de   │
+                      │              │    │  Conocimiento      *│
+                      └──────────────┘    └─────────────────────┘
                              │
                              │
                       ┌──────▼───────┐
@@ -27,10 +28,19 @@ La infraestructura desplegada incluye los siguientes componentes:
                       │  S3 Bucket   │
                       │              │
                       └──────────────┘
+                             │
+                             ▼
+                  ┌─────────────────────┐
+                  │     Frontend UI     │ (Opcional)
+                  │  (React en S3)      │
+                  └─────────────────────┘
+
+* La Base de Datos de Conocimiento debe configurarse manualmente y no es parte del despliegue automático de Terraform
 ```
 
 ## Recursos Desplegados
 
+### Desplegados automáticamente por Terraform:
 - **Random Pet**: Genera un sufijo aleatorio para garantizar nombres únicos en los recursos.
 - **IAM Roles y Políticas**: Para el agente de Bedrock y la función Lambda.
 - **S3 Bucket**: Para almacenar archivos relacionados con la aplicación.
@@ -40,6 +50,10 @@ La infraestructura desplegada incluye los siguientes componentes:
 - **Lambda Function URL**: URL directa para invocar la Lambda (opcional).
 - **API Gateway HTTP API**: API REST para exponer la función Lambda externamente.
 - **API Gateway Routes e Integration**: Configuración para conectar la API con la Lambda.
+- **S3 Website Hosting**: Configuración de alojamiento web estático para el frontend (opcional).
+
+### Recursos que requieren configuración manual:
+- **Base de Datos de Conocimiento**: La base de conocimiento para el agente Bedrock (Knowledge Base) no está incluida en este despliegue de Terraform y debe configurarse manualmente después del despliegue. Se recomienda utilizar Aurora PostgreSQL Serverless para esta función. Consulte la sección "Base de Datos de Conocimiento" más adelante para más detalles.
 
 ## Requisitos Previos
 
@@ -47,6 +61,7 @@ La infraestructura desplegada incluye los siguientes componentes:
 - [AWS CLI](https://aws.amazon.com/cli/) instalado y configurado
 - Acceso a AWS con permisos para crear todos los recursos mencionados
 - Acceso habilitado a Amazon Bedrock y los modelos requeridos en tu cuenta
+- Node.js y npm (solo si se despliega la interfaz de usuario)
 
 ## Permisos de AWS Requeridos
 
@@ -148,13 +163,42 @@ El usuario necesita los siguientes permisos específicos:
 
 Este despliegue requiere las siguientes variables:
 
-| Variable | Descripción | Ejemplo |
-|----------|-------------|---------|
-| `region` | La región de AWS donde se desplegarán los recursos | `us-east-1` |
-| `foundation_model` | El ID del modelo de Bedrock a utilizar | `anthropic.claude-3-sonnet-20240229-v1:0` |
-| `agent_name` | El nombre base para el agente | `my-bedrock-agent` |
-| `instruction` | Las instrucciones para el agente de Bedrock | `Eres un asistente...` |
-| `bucket_name` | El nombre base para el bucket S3 | `bedrock-agent-files` |
+| Variable | Descripción | Ejemplo | Requerido |
+|----------|-------------|---------|-----------|
+| `region` | La región de AWS donde se desplegarán los recursos | `us-east-1` | Sí |
+| `foundation_model` | El ID del modelo de Bedrock a utilizar | `anthropic.claude-3-sonnet-20240229-v1:0` | Sí |
+| `agent_name` | El nombre base para el agente | `my-bedrock-agent` | Sí |
+| `instruction` | Las instrucciones para el agente de Bedrock | `Eres un asistente...` | Sí |
+| `bucket_name` | El nombre base para el bucket S3 | `bedrock-agent-files` | Sí |
+| `deploy_ui` | Controla si se despliega la interfaz de usuario web (true) o solo el backend (false) | `true` o `false` | No (por defecto: `true`) |
+
+## Opciones de Despliegue
+
+Este proyecto ofrece dos modos de despliegue:
+
+### 1. Despliegue Completo (Backend + Frontend)
+
+Si `deploy_ui = true` (valor predeterminado), se desplegará:
+- Toda la infraestructura del backend (Agente Bedrock, Lambda, API Gateway)
+- La interfaz de usuario React alojada en S3
+- Configuración de CORS en el API Gateway para permitir solicitudes desde el frontend
+
+Este modo es ideal para:
+- Desarrollo y pruebas de la solución completa
+- Implementaciones que requieren una interfaz de usuario web
+
+### 2. Despliegue Solo Backend
+
+Si `deploy_ui = false`, se desplegará:
+- Solo la infraestructura del backend (Agente Bedrock, Lambda, API Gateway)
+- Sin interfaz de usuario
+- API Gateway sin configuración CORS completa
+
+Este modo es ideal para:
+- Integración con aplicaciones existentes
+- Uso como API headless
+- Entornos donde la interfaz de usuario se gestiona por separado
+- Reducción de costos al eliminar recursos innecesarios
 
 ## Uso
 
@@ -173,8 +217,14 @@ terraform plan -var-file="terraform.tfvars"
 
 ### Aplicación
 
+Para desplegar todo (backend + frontend):
 ```bash
 terraform apply -var-file="terraform.tfvars" -auto-approve
+```
+
+Para desplegar solo el backend:
+```bash
+terraform apply -var-file="terraform.tfvars" -var="deploy_ui=false" -auto-approve
 ```
 
 ### Ejemplo de archivo terraform.tfvars
@@ -185,6 +235,7 @@ foundation_model = "anthropic.claude-3-sonnet-20240229-v1:0"
 agent_name = "demo-agent"
 instruction = "Eres un asistente experto en AWS que responde preguntas sobre servicios de AWS."
 bucket_name = "bedrock-agent-demo"
+deploy_ui = true  # Establecer a false para desplegar solo el backend
 ```
 
 ## Salidas
@@ -197,6 +248,8 @@ Después del despliegue, Terraform producirá las siguientes salidas:
 | `lambda_function_url` | URL directa de la función Lambda |
 | `agent_id` | ID del agente Bedrock creado |
 | `agent_alias_id` | ID del alias del agente Bedrock |
+| `frontend_website_url` | URL del sitio web del frontend (si `deploy_ui = true`) |
+| `ui_deployed` | Indica si la interfaz de usuario ha sido desplegada |
 
 ## Limpieza
 

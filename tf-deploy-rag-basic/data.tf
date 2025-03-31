@@ -42,6 +42,15 @@ data "aws_iam_policy_document" "policy_agent_trust" {
   }
 }
 
+# Extraer valores para usarlos en la política
+locals {
+  model_parts             = split(".", var.foundation_model)
+  model_region            = length(local.model_parts) > 0 ? local.model_parts[0] : "us"
+  model_provider          = length(local.model_parts) > 1 ? local.model_parts[1] : "anthropic"
+  model_name_with_version = length(local.model_parts) > 2 ? local.model_parts[2] : "claude-3-5-sonnet-20241022-v2"
+  model_name              = split(":", local.model_name_with_version)[0]
+}
+
 # Documento de política que define los permisos que el agente Bedrock necesita
 # para interactuar con otros servicios AWS, principalmente el modelo de fundación
 data "aws_iam_policy_document" "policy_agent_permissions" {
@@ -50,14 +59,24 @@ data "aws_iam_policy_document" "policy_agent_permissions" {
       "bedrock:InvokeModel",                   # Permite invocar el modelo
       "bedrock:InvokeModelWithResponseStream", # Permite invocar el modelo con streaming
       "bedrock:GetInferenceProfile",           # Permite obtener información del perfil de inferencia
-      "bedrock:GetFoundationModel"             # Permite obtener información sobre el modelo base
+      "bedrock:GetFoundationModel",            # Permite obtener información sobre el modelo base
+      "bedrock:CreateKnowledgeBase",           # Permite crear knowledge base
+      "bedrock:DeleteKnowledgeBase",           # Permite eliminar knowledge base
+      "bedrock:AssociateKnowledgeBase",        # Permite asociar knowledge base al agente
+      "bedrock:DisassociateKnowledgeBase",     # Permite desasociar knowledge base
+      "bedrock:CreateDataSource",              # Permite crear fuentes de datos
+      "bedrock:DeleteDataSource",              # Permite eliminar fuentes de datos
+      "bedrock:UpdateDataSource",              # Permite actualizar fuentes de datos
+      "bedrock:StartIngestionJob",             # Permite iniciar trabajos de ingestión
+      "bedrock:GetIngestionJob"                # Permite obtener información de trabajos de ingestión
     ]
-    # Recursos específicos a los que se aplican estos permisos:
-    # 1. El perfil de inferencia del modelo especificado en la variable
-    # 2. El modelo de fundación específico utilizado
+    # Recursos específicos a los que se aplican estos permisos, incluyendo comodines para
+    # facilitar el acceso a cualquier versión del modelo
     resources = [
-      "arn:aws:bedrock:${data.aws_region.current.name}:${data.aws_caller_identity.current.id}:inference-profile/${var.foundation_model}",
-      "arn:aws:bedrock:*::foundation-model/${split(".", var.foundation_model)[1]}.${split(".", var.foundation_model)[2]}"
+      "arn:aws:bedrock:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:inference-profile/${var.foundation_model}",
+      "arn:aws:bedrock:*::foundation-model/*",                                                                           # Permiso para acceder a cualquier modelo de fundación
+      "arn:aws:bedrock:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:knowledge-base/*", # Permiso para knowledge bases
+      "arn:aws:bedrock:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:agent/*",          # Permisos para agentes
     ]
   }
 }

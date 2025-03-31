@@ -9,6 +9,7 @@ Esta función Lambda sirve como intermediario entre una API REST y un agente de 
 - Manejo de streaming de respuestas
 - Gestión de errores robusta
 - Fácil despliegue mediante Terraform
+- Integración con bases de conocimiento RAG (configuradas manualmente)
 
 ## Requisitos
 - Python 3.13 o superior
@@ -16,6 +17,7 @@ Esta función Lambda sirve como intermediario entre una API REST y un agente de 
 - Amazon Bedrock con un agente configurado
 - Permisos IAM para `bedrock:InvokeAgent`
 - Boto3 (incluido en el entorno Lambda)
+- Base de datos de conocimiento configurada manualmente (para capacidades RAG)
 
 ## Variables de Entorno
 La función requiere las siguientes variables de entorno:
@@ -79,6 +81,18 @@ Esta Lambda está diseñada para ser desplegada mediante Terraform como parte de
 
 Consulta el archivo `tf-deploy-rag-basic/main.tf` para ver la configuración completa.
 
+## Base de Conocimiento (RAG)
+Esta Lambda está diseñada para trabajar con un agente de Bedrock que puede utilizar una base de conocimiento para proporcionar respuestas más precisas y contextuales (Recuperación Aumentada de Generación o RAG).
+
+**Importante**: La base de conocimiento **no** se despliega automáticamente con Terraform y debe configurarse manualmente. Después de desplegar toda la infraestructura, sigue estos pasos generales:
+
+1. Crea una base de datos compatible (recomendado Aurora PostgreSQL Serverless)
+2. Configura la base de conocimiento en la consola de Amazon Bedrock
+3. Sube los documentos o datos que deseas incluir en tu base de conocimiento
+4. Configura el agente de Bedrock para usar esta base de conocimiento
+
+Para más detalles sobre la configuración manual de la base de conocimiento, consulta la sección específica en el [README de Terraform](../tf-deploy-rag-basic/README.md#base-de-datos-de-conocimiento).
+
 ## Mejoras Futuras
 - Implementar manejo dinámico de sesiones
 - Añadir autenticación para las solicitudes
@@ -92,3 +106,4 @@ Si encuentras errores durante la invocación:
 2. Confirma que la función Lambda tenga los permisos IAM adecuados
 3. Asegúrate de que el agente de Bedrock esté correctamente configurado y activo
 4. Revisa los logs en CloudWatch para obtener información detallada sobre cualquier error
+5. Si usas RAG, comprueba que la base de conocimiento esté correctamente configurada y accesible por el agente
