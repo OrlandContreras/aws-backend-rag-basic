@@ -1,0 +1,259 @@
+# Despliegue de Agente Amazon Bedrock con Terraform
+
+## Descripción
+Este proyecto contiene la configuración de Terraform para desplegar un agente de Amazon Bedrock junto con toda la infraestructura necesaria para su funcionamiento e integración con aplicaciones externas a través de API Gateway y Lambda.
+
+## Arquitectura
+
+La infraestructura desplegada incluye los siguientes componentes:
+
+```
+┌────────────────┐    ┌────────────────┐    ┌────────────────┐
+│                │    │                │    │                │
+│  API Gateway   │───▶│     Lambda     │───▶│ Bedrock Agent  │
+│                │    │                │    │                │
+└────────────────┘    └────────────────┘    └────────────────┘
+                             │
+                             │
+                      ┌──────▼───────┐
+                      │              │
+                      │   IAM Roles  │
+                      │              │
+                      └──────────────┘
+                             │
+                             │
+                      ┌──────▼───────┐
+                      │              │
+                      │  S3 Bucket   │
+                      │              │
+                      └──────────────┘
+```
+
+## Recursos Desplegados
+
+- **Random Pet**: Genera un sufijo aleatorio para garantizar nombres únicos en los recursos.
+- **IAM Roles y Políticas**: Para el agente de Bedrock y la función Lambda.
+- **S3 Bucket**: Para almacenar archivos relacionados con la aplicación.
+- **Bedrock Agent**: Configuración del agente con el modelo especificado.
+- **Bedrock Agent Alias**: Alias requerido para invocar el agente.
+- **Lambda Function**: Código Python que sirve como intermediario para invocar el agente.
+- **Lambda Function URL**: URL directa para invocar la Lambda (opcional).
+- **API Gateway HTTP API**: API REST para exponer la función Lambda externamente.
+- **API Gateway Routes e Integration**: Configuración para conectar la API con la Lambda.
+
+## Requisitos Previos
+
+- [Terraform](https://www.terraform.io/downloads.html) instalado (v1.0.0+)
+- [AWS CLI](https://aws.amazon.com/cli/) instalado y configurado
+- Acceso a AWS con permisos para crear todos los recursos mencionados
+- Acceso habilitado a Amazon Bedrock y los modelos requeridos en tu cuenta
+
+## Permisos de AWS Requeridos
+
+Para ejecutar este despliegue de Terraform, el usuario de AWS debe tener permisos suficientes para crear y administrar todos los recursos involucrados. Se recomienda una de las siguientes opciones:
+
+### Opción 1: Usuario con permisos administrativos (para desarrollo)
+- Política administrada: `AdministratorAccess`
+
+### Opción 2: Permisos específicos (recomendado para producción)
+El usuario necesita los siguientes permisos específicos:
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:CreateBucket",
+                "s3:ListBucket",
+                "s3:GetBucketLocation",
+                "s3:PutBucketPolicy",
+                "s3:GetObject",
+                "s3:PutObject",
+                "s3:DeleteObject",
+                "s3:DeleteBucket"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "iam:CreateRole",
+                "iam:DeleteRole",
+                "iam:GetRole",
+                "iam:PassRole",
+                "iam:PutRolePolicy",
+                "iam:DeleteRolePolicy",
+                "iam:GetRolePolicy",
+                "iam:AttachRolePolicy",
+                "iam:DetachRolePolicy",
+                "iam:TagRole"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "lambda:CreateFunction",
+                "lambda:GetFunction",
+                "lambda:DeleteFunction",
+                "lambda:UpdateFunctionCode",
+                "lambda:UpdateFunctionConfiguration",
+                "lambda:InvokeFunction",
+                "lambda:AddPermission",
+                "lambda:RemovePermission",
+                "lambda:GetPolicy",
+                "lambda:CreateFunctionUrlConfig",
+                "lambda:GetFunctionUrlConfig",
+                "lambda:DeleteFunctionUrlConfig"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "apigateway:*"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "bedrock:*"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "logs:CreateLogGroup",
+                "logs:CreateLogStream",
+                "logs:PutLogEvents",
+                "logs:DescribeLogGroups",
+                "logs:DeleteLogGroup"
+            ],
+            "Resource": "*"
+        }
+    ]
+}
+```
+
+### Notas importantes:
+- Para entornos de producción, es recomendable restringir los recursos ("Resource") a los ARNs específicos en lugar de usar "*".
+- Es posible que se requieran permisos adicionales dependiendo de las personalizaciones realizadas.
+- Para usar Bedrock, la cuenta debe tener acceso habilitado a este servicio y a los modelos específicos.
+
+## Variables de Entrada
+
+Este despliegue requiere las siguientes variables:
+
+| Variable | Descripción | Ejemplo |
+|----------|-------------|---------|
+| `region` | La región de AWS donde se desplegarán los recursos | `us-east-1` |
+| `foundation_model` | El ID del modelo de Bedrock a utilizar | `anthropic.claude-3-sonnet-20240229-v1:0` |
+| `agent_name` | El nombre base para el agente | `my-bedrock-agent` |
+| `instruction` | Las instrucciones para el agente de Bedrock | `Eres un asistente...` |
+| `bucket_name` | El nombre base para el bucket S3 | `bedrock-agent-files` |
+
+## Uso
+
+### Inicialización
+
+```bash
+cd tf-deploy-rag-basic
+terraform init
+```
+
+### Plan de Ejecución
+
+```bash
+terraform plan -var-file="terraform.tfvars"
+```
+
+### Aplicación
+
+```bash
+terraform apply -var-file="terraform.tfvars" -auto-approve
+```
+
+### Ejemplo de archivo terraform.tfvars
+
+```hcl
+region = "us-east-1"
+foundation_model = "anthropic.claude-3-sonnet-20240229-v1:0"
+agent_name = "demo-agent"
+instruction = "Eres un asistente experto en AWS que responde preguntas sobre servicios de AWS."
+bucket_name = "bedrock-agent-demo"
+```
+
+## Salidas
+
+Después del despliegue, Terraform producirá las siguientes salidas:
+
+| Output | Descripción |
+|--------|-------------|
+| `api_gateway_url` | URL del API Gateway para invocar el agente |
+| `lambda_function_url` | URL directa de la función Lambda |
+| `agent_id` | ID del agente Bedrock creado |
+| `agent_alias_id` | ID del alias del agente Bedrock |
+
+## Limpieza
+
+Para eliminar todos los recursos desplegados:
+
+```bash
+terraform destroy -var-file="terraform.tfvars" -auto-approve
+```
+
+## Estructura de Archivos
+
+```
+tf-deploy-rag-basic/
+├── main.tf           # Definición principal de recursos
+├── variables.tf      # Declaración de variables
+├── data.tf           # Fuentes de datos y definiciones de políticas
+├── outputs.tf        # Definiciones de salida (opcional)
+├── terraform.tfvars  # Valores de las variables (no incluido en el repo)
+└── README.md         # Este archivo
+```
+
+## Personalización
+
+Para personalizar este despliegue:
+
+1. Modifica las variables en tu archivo `terraform.tfvars`
+2. Ajusta las políticas IAM en `data.tf` si necesitas permisos adicionales
+3. Modifica la configuración del agente o Lambda en `main.tf`
+
+## Base de Datos de Conocimiento
+
+La base de datos de conocimiento para el agente Bedrock debe generarse de manera manual, ya que no está incluida en esta configuración de Terraform. Para obtener el mejor rendimiento y escalabilidad, se recomienda:
+
+- **Aurora PostgreSQL Serverless**: Proporciona capacidad bajo demanda que se escala automáticamente según las necesidades, ideal para cargas de trabajo variables.
+- Ventajas:
+  - Escalado automático sin administración de capacidad
+  - Facturación por segundo
+  - Alta disponibilidad integrada
+  - Compatible con PostgreSQL
+
+### Pasos generales para configurar:
+
+1. Crear un clúster de Aurora PostgreSQL Serverless en la consola de AWS o mediante la AWS CLI
+2. Configurar los parámetros adecuados para conectividad
+3. Crear las tablas y esquemas necesarios para la base de conocimiento
+4. Configurar el agente Bedrock para utilizar esta base de datos como fuente de conocimiento
+
+Para más información, consulte la [documentación de Amazon Aurora Serverless](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless.html).
+
+## Solución de Problemas
+
+- **Error de permisos IAM**: Verifica que tu usuario de AWS tenga permisos suficientes
+- **Error de límites de servicio**: Puede ser necesario solicitar un aumento de cuota para Bedrock
+- **Error de región no soportada**: Confirma que la región seleccionada admite Bedrock y el modelo elegido
+
+## Referencias
+
+- [Documentación de Amazon Bedrock](https://docs.aws.amazon.com/bedrock/)
+- [Documentación de Terraform para AWS](https://registry.terraform.io/providers/hashicorp/aws/latest/docs)
+- [Función Lambda asociada](../agent-py-demo-ai/README.md)
