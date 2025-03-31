@@ -6,7 +6,30 @@ Este repositorio contiene una implementación completa de un backend basado en A
 
 ## Arquitectura
 
-![Arquitectura](https://miro.medium.com/v2/resize:fit:1400/1*vx3OEQpRyHZ-EQUKlU2XEA.png)
+```
+                     ┌───────────────┐                  
+    ┌─────────────┐  │               │    ┌─────────────────┐
+    │             │  │  API Gateway  │    │                 │
+    │   Cliente   │──►               │───►│  AWS Lambda     │
+    │             │  │   (HTTP)      │    │                 │
+    └─────────────┘  │               │    └────────┬────────┘
+                     └───────────────┘             │
+                                                   │
+                                                   ▼
+                     ┌───────────────┐    ┌─────────────────┐
+                     │               │    │                 │
+                     │  Amazon S3    │    │  Amazon Bedrock │
+                     │               │    │    (Agente)     │
+                     └───────┬───────┘    └────────┬────────┘
+                             │                     │
+                             │                     │
+                             ▼                     ▼
+                     ┌───────────────┐    ┌─────────────────┐
+                     │   IAM Roles   │    │  Base de Datos  │
+                     │  & Políticas  │    │  Conocimiento   │
+                     │               │    │  (PostgreSQL)   │
+                     └───────────────┘    └─────────────────┘
+```
 
 La arquitectura del proyecto incluye:
 
@@ -109,4 +132,4 @@ El proyecto es altamente personalizable:
 
 ## Contribuciones
 
-Las contribuciones son bienvenidas. Por favor, abre un issue para discutir los cambios antes de enviar un pull request. 
+Las contribuciones son bienvenidas. Por favor, abre un issue para discutir los cambios antes de enviar un pull request.
