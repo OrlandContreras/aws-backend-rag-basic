@@ -200,6 +200,23 @@ Este modo es ideal para:
 - Entornos donde la interfaz de usuario se gestiona por separado
 - Reducción de costos al eliminar recursos innecesarios
 
+### Despliegue Manual del Frontend
+
+Si has elegido la opción `deploy_ui = false` o has encontrado problemas con el despliegue automático del frontend, puedes desplegarlo manualmente siguiendo estos pasos:
+
+1. Obtén el nombre del bucket y la URL del API Gateway:
+   ```bash
+   terraform output frontend_bucket_name
+   terraform output api_gateway_url
+   ```
+
+2. Sigue las instrucciones detalladas en el [README del frontend](../agent-react-app/README.md#opción-2-despliegue-manual) para desplegar manualmente la aplicación React.
+
+3. Este enfoque es útil cuando:
+   - Trabajas en entornos con políticas de ejecución restrictivas
+   - Quieres personalizar el frontend antes de desplegarlo
+   - Necesitas más control sobre el proceso de despliegue
+
 ## Uso
 
 ### Inicialización
@@ -227,6 +244,26 @@ Para desplegar solo el backend:
 terraform apply -var-file="terraform.tfvars" -var="deploy_ui=false" -auto-approve
 ```
 
+### Verificación del Despliegue
+
+Después del despliegue, puedes obtener información importante con:
+
+```bash
+# Obtener todas las salidas
+terraform output
+
+# Obtener la URL de la API Gateway
+terraform output api_gateway_url
+
+# Obtener el nombre del bucket para el frontend (si deploy_ui = true)
+terraform output frontend_bucket_name
+
+# Obtener la URL del sitio web frontend (si deploy_ui = true)
+terraform output frontend_website_url
+```
+
+Si utilizas la opción `deploy_ui=true`, verás instrucciones en la consola para el despliegue manual del frontend. Estas instrucciones incluirán los comandos específicos para tu entorno (Windows o Unix) y mostrarán el nombre del bucket S3 donde debe desplegarse el frontend.
+
 ### Ejemplo de archivo terraform.tfvars
 
 ```hcl
@@ -249,6 +286,7 @@ Después del despliegue, Terraform producirá las siguientes salidas:
 | `agent_id` | ID del agente Bedrock creado |
 | `agent_alias_id` | ID del alias del agente Bedrock |
 | `frontend_website_url` | URL del sitio web del frontend (si `deploy_ui = true`) |
+| `frontend_bucket_name` | Nombre del bucket S3 donde se debe desplegar el frontend (si `deploy_ui = true`) |
 | `ui_deployed` | Indica si la interfaz de usuario ha sido desplegada |
 
 ## Limpieza

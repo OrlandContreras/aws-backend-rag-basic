@@ -32,3 +32,8 @@ output "ui_deployed" {
   value       = var.deploy_ui
   description = "Indica si la interfaz de usuario ha sido desplegada"
 }
+
+output "frontend_bucket_name" {
+  value       = var.deploy_ui ? aws_s3_bucket.frontend_bucket[0].bucket : "UI no desplegada (deploy_ui = false)"
+  description = "Nombre del bucket S3 donde se debe desplegar el frontend"
+}
