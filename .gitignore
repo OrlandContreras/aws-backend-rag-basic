@@ -49,10 +49,8 @@ venv/
 ENV/
 .python-version
 .env.*
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+!.env.*.example
+!.env.example
 
 # AWS
 lambda_function.zip

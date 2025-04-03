@@ -61,13 +61,22 @@ agent-react-app/
    ```
 
 3. Configura las variables de entorno:
-   - Crea un archivo `.env.development` para desarrollo local
-   - Crea un archivo `.env.production` para producción
+   - Puedes usar los archivos de ejemplo proporcionados como punto de partida:
+     - `.env.example` → `.env` (variables base para todos los entornos)
+     - `.env.local.example` → `.env.local` (variables para desarrollo local)
+     - `.env.production.example` → `.env.production` (variables para producción)
    
-   Ejemplo:
+   Ejemplo de configuración para producción:
    ```
-   VITE_API_URL=https://tu-api-gateway-url/dev/agent
+   # Archivo .env.production
+   VITE_API_URL=https://tu-api-gateway-url.execute-api.us-east-1.amazonaws.com/dev/agent
    ```
+
+   El sistema de carga de variables de entorno sigue esta prioridad:
+   - Para desarrollo (`npm run dev`): 
+     `.env` → `.env.local` → `.env.development` → `.env.development.local`
+   - Para producción (`npm run build`): 
+     `.env` → `.env.local` → `.env.production` → `.env.production.local`
 
 ## Desarrollo
 
