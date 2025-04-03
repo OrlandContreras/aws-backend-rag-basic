@@ -68,7 +68,8 @@ data "aws_iam_policy_document" "policy_agent_permissions" {
       "bedrock:DeleteDataSource",              # Permite eliminar fuentes de datos
       "bedrock:UpdateDataSource",              # Permite actualizar fuentes de datos
       "bedrock:StartIngestionJob",             # Permite iniciar trabajos de ingestión
-      "bedrock:GetIngestionJob"                # Permite obtener información de trabajos de ingestión
+      "bedrock:GetIngestionJob",               # Permite obtener información de trabajos de ingestión
+      "bedrock:Retrieve"                       # Permite recuperar información de knowledge bases
     ]
     # Recursos específicos a los que se aplican estos permisos, incluyendo comodines para
     # facilitar el acceso a cualquier versión del modelo
