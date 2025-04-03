@@ -93,7 +93,7 @@ Esto generará los archivos estáticos en el directorio `dist/`.
 
 ### Opción 1: Despliegue Automatizado con Terraform
 
-El despliegue se realiza automáticamente como parte del proceso de Terraform desde el directorio `tf-deploy-rag-basic`:
+El despliegue se realiza automáticamente como parte del proceso de Terraform desde el directorio `tf-deploy-rag-basic` cuando la opción `deploy_ui = true` está configurada:
 
 ```bash
 cd ../tf-deploy-rag-basic
@@ -107,7 +107,7 @@ terraform apply -var-file="terraform.tfvars" -var="deploy_ui=false"
 
 ### Opción 2: Despliegue Manual
 
-Debido a las políticas de seguridad restrictivas en algunos entornos, especialmente en PowerShell, se recomienda seguir estos pasos para el despliegue manual:
+Si has configurado `deploy_ui = false` en Terraform o necesitas realizar un despliegue manual del frontend, sigue estos pasos:
 
 #### Preparación:
 
@@ -123,39 +123,9 @@ Debido a las políticas de seguridad restrictivas en algunos entornos, especialm
    terraform output frontend_bucket_name
    ```
 
-#### Despliegue en PowerShell (para usuarios de Windows):
+#### Pasos para el despliegue manual:
 
-Para evitar problemas con las políticas de ejecución restrictivas, usa estos comandos individuales:
-
-1. Configura la política de ejecución para la sesión actual (opcional):
-   ```powershell
-   Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process -Force
-   ```
-
-2. Actualiza el archivo .env.production con la URL del API:
-   ```powershell
-   $apiUrl = terraform output -raw api_gateway_url   # Debes estar en el directorio tf-deploy-rag-basic
-   Set-Content -Path .env.production -Value "VITE_API_URL=$apiUrl"
-   ```
-
-3. Instala dependencias (si aún no están instaladas):
-   ```powershell
-   npm install
-   ```
-
-4. Compila la aplicación:
-   ```powershell
-   npm run build
-   ```
-
-5. Despliega a S3 (reemplaza "nombre-del-bucket" con el nombre real del bucket):
-   ```powershell
-   aws s3 sync dist/ s3://nombre-del-bucket --delete
-   ```
-
-#### Despliegue en Bash (para usuarios de Linux/macOS):
-
-1. Actualiza el archivo .env.production con la URL del API:
+1. Configura la URL de la API en el archivo .env.production:
    ```bash
    cd ../agent-react-app
    API_URL=$(cd ../tf-deploy-rag-basic && terraform output -raw api_gateway_url)
@@ -184,7 +154,11 @@ Después de desplegar, puedes acceder a tu aplicación en:
 http://nombre-del-bucket.s3-website-us-east-1.amazonaws.com
 ```
 
-Reemplaza `nombre-del-bucket` con el nombre real del bucket y `us-east-1` con tu región de AWS si es diferente.
+O a través de la URL proporcionada por Terraform:
+```bash
+cd ../tf-deploy-rag-basic
+terraform output frontend_website_url
+```
 
 ## Interacción con la Base de Conocimiento
 

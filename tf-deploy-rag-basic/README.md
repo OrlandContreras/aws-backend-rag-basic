@@ -210,9 +210,24 @@ Si has elegido la opción `deploy_ui = false` o has encontrado problemas con el 
    terraform output api_gateway_url
    ```
 
-2. Sigue las instrucciones detalladas en el [README del frontend](../agent-react-app/README.md#opción-2-despliegue-manual) para desplegar manualmente la aplicación React.
+2. Ve al directorio de la aplicación React y configura la URL de la API en el archivo .env.production:
+   ```bash
+   cd ../agent-react-app
+   echo "VITE_API_URL=$(terraform output -raw api_gateway_url)" > .env.production
+   ```
 
-3. Este enfoque es útil cuando:
+3. Compila la aplicación React:
+   ```bash
+   npm install
+   npm run build
+   ```
+
+4. Sube los archivos compilados al bucket S3:
+   ```bash
+   aws s3 sync dist/ s3://$(terraform output -raw frontend_bucket_name) --delete
+   ```
+
+5. Este enfoque es útil cuando:
    - Trabajas en entornos con políticas de ejecución restrictivas
    - Quieres personalizar el frontend antes de desplegarlo
    - Necesitas más control sobre el proceso de despliegue

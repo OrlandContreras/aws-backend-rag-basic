@@ -81,6 +81,8 @@ Esta Lambda está diseñada para ser desplegada mediante Terraform como parte de
 
 Consulta el archivo `tf-deploy-rag-basic/main.tf` para ver la configuración completa.
 
+Si necesitas desplegar o actualizar manualmente el frontend de la aplicación, consulta las instrucciones en el [README del proyecto de frontend](../agent-react-app/README.md#despliegue).
+
 ## Base de Conocimiento (RAG)
 Esta Lambda está diseñada para trabajar con un agente de Bedrock que puede utilizar una base de conocimiento para proporcionar respuestas más precisas y contextuales (Recuperación Aumentada de Generación o RAG).
 
