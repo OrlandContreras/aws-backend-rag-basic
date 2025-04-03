@@ -59,8 +59,6 @@ aws-backend-rag-basic/
 │
 ├── agent-react-app/        # Aplicación frontend en React
 │   ├── src/                # Código fuente React
-│   ├── deploy.sh           # Script de despliegue para Unix/macOS
-│   ├── deploy.ps1          # Script de despliegue para Windows
 │   └── README.md           # Documentación del frontend
 │
 ├── tf-deploy-rag-basic/    # Configuración de Terraform
@@ -105,7 +103,7 @@ La carpeta `agent-react-app` contiene una aplicación web desarrollada en React 
 
 - Interfaz de chat moderna y adaptable
 - Manejo de errores y estado de carga
-- Scripts de despliegue para Windows y Unix
+- Despliegue opcional mediante Terraform o manualmente en S3
 
 Para más detalles, consulta el [README del Frontend](./agent-react-app/README.md).
 
@@ -177,11 +175,14 @@ Para utilizar este proyecto, necesitarás:
      -d '{"prompt": "¿Qué servicios ofrece AWS para IA?"}'
    ```
 
-4. **Desplegar el frontend manualmente** (opcional):
+4. **Desplegar el frontend manualmente** (opcional, si no se desplegó automáticamente):
    ```bash
    cd ../agent-react-app
-   chmod +x deploy.sh
-   ./deploy.sh
+   API_URL=$(cd ../tf-deploy-rag-basic && terraform output -raw api_gateway_url)
+   echo "VITE_API_URL=$API_URL" > .env.production
+   npm install
+   npm run build
+   aws s3 sync dist/ s3://$(cd ../tf-deploy-rag-basic && terraform output -raw frontend_bucket_name) --delete
    ```
 
 ### En Windows:
@@ -216,17 +217,22 @@ Para utilizar este proyecto, necesitarás:
    Invoke-RestMethod -Uri "https://tu-api-gateway-url/dev/agent" -Method Post -Headers $headers -Body $body
    ```
 
-4. **Desplegar el frontend manualmente** (opcional):
+4. **Desplegar el frontend manualmente** (opcional, si no se desplegó automáticamente):
    ```powershell
    cd ..\agent-react-app
-   .\deploy.ps1
+   $apiUrl = (cd ..\tf-deploy-rag-basic; terraform output -raw api_gateway_url)
+   Set-Content -Path .env.production -Value "VITE_API_URL=$apiUrl"
+   npm install
+   npm run build
+   $bucketName = (cd ..\tf-deploy-rag-basic; terraform output -raw frontend_bucket_name)
+   aws s3 sync dist/ s3://$bucketName --delete
    ```
 
 ## Solución de Problemas Comunes
 
 ### En Windows
 
-- **Error al ejecutar scripts de PowerShell**: Ajusta la política de ejecución:
+- **Error al ejecutar comandos en PowerShell**: Ajusta la política de ejecución:
   ```powershell
   Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
   ```
@@ -239,11 +245,6 @@ Para utilizar este proyecto, necesitarás:
   ```
 
 ### En macOS/Linux
-
-- **Permisos de ejecución**: Si no puedes ejecutar los scripts, asigna permisos:
-  ```bash
-  chmod +x deploy.sh
-  ```
 
 - **AWS CLI no configurado**: Asegúrate de que AWS CLI está configurado:
   ```bash
