@@ -170,49 +170,38 @@ Para más detalles sobre cómo configurar la base de conocimiento manualmente, c
 
 ## Resolución de Problemas
 
-### Problemas Comunes en Windows
+### Problemas con el entorno de desarrollo
+- **Node.js o npm no encontrados**: Asegúrate de que Node.js (versión 18 o superior) esté instalado correctamente y agregado al PATH del sistema.
+- **Errores al instalar dependencias**: Intenta ejecutar `npm cache clean --force` y luego vuelve a instalar las dependencias.
+- **Problemas con los permisos de archivos**: Asegúrate de que tienes permisos de escritura en el directorio del proyecto.
 
-- **Error de permisos en PowerShell**: Si encuentras problemas con las políticas de ejecución de PowerShell, puedes cambiarla temporalmente para la sesión actual:
-  ```powershell
-  Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-  ```
+### Problemas con Vite y la compilación
+- **Errores durante la compilación**: Verifica que el archivo `.env.production` contenga la URL correcta del API Gateway.
+- **Variables de entorno no disponibles**: Asegúrate de que los nombres de las variables comienzan con `VITE_` para que sean expuestas a la aplicación.
+- **Advertencias de TypeScript**: Si aparecen errores o advertencias de tipado, ejecuta `npm run typecheck` para identificar problemas específicos.
 
-- **Error al usar npm en PowerShell**: En algunos entornos corporativos, el uso de npm está restringido. En estos casos, puedes intentar:
-  - Solicitar permisos temporales de administrador
-  - Usar una terminal alternativa como CMD
-  - Configurar las políticas de ejecución a nivel de usuario si tienes permisos
-
-- **AWS CLI no está en el PATH**: Asegúrate de que AWS CLI esté instalado y agregado al PATH del sistema.
-
-### Problemas Comunes en Unix
-
-- **Problemas con los permisos de archivos**: Si encuentras problemas de permisos, asegúrate de que tienes permisos de escritura en el directorio:
-  ```bash
-  chmod -R u+w .
-  ```
-
-- **Node.js o npm no encontrados**: Asegúrate de que Node.js esté instalado correctamente y que está en el PATH del sistema.
-
-### Problemas de Despliegue en S3
-
-- **Error "Access Denied" al subir archivos a S3**: Verifica que:
+### Problemas de despliegue en S3
+- **Error "Access Denied" al subir archivos**: Verifica que:
   1. El bucket S3 existe y tienes permisos para escribir en él
-  2. Tu usuario de AWS tiene los permisos adecuados (s3:PutObject)
+  2. Tu usuario de AWS tiene los permisos adecuados (`s3:PutObject` y otros necesarios)
   3. Las configuraciones de acceso público del bucket permiten el despliegue
 
 - **Sitio web no accesible después del despliegue**: Asegúrate de que:
   1. El bucket tiene la configuración de sitio web estático habilitada
   2. La política del bucket permite el acceso público a los objetos
-  3. La ACL del bucket está configurada correctamente
+  3. La configuración CORS está correctamente establecida
 
-### Problemas Relacionados con la Base de Conocimiento
+### Problemas de comunicación con el backend
+- **Error de CORS**: Si ves errores de CORS en la consola del navegador, verifica que el API Gateway tenga configurados correctamente los encabezados CORS.
+- **Tiempo de respuesta excesivo**: El primer acceso al agente puede ser lento debido al "cold start" de la función Lambda. Las solicitudes posteriores deberían ser más rápidas.
+- **Error de conexión**: Verifica que la URL del API Gateway en `.env.production` sea correcta y que el API Gateway esté desplegado y accesible.
 
-Si el agente no proporciona respuestas basadas en tu base de conocimiento:
-
-1. Verifica que la base de conocimiento se haya configurado correctamente en la consola de Amazon Bedrock.
-2. Asegúrate de que el agente tiene acceso y esté configurado para usar la base de conocimiento.
-3. Comprueba que los datos ingresados en la base de conocimiento sean relevantes para las consultas realizadas.
-4. Revisa los registros del agente en la consola de Amazon Bedrock para diagnosticar problemas.
+### Problemas con la base de conocimiento
+- **El agente no proporciona respuestas basadas en conocimiento**: Verifica que:
+  1. La base de conocimiento se haya configurado correctamente en la consola de Amazon Bedrock
+  2. El agente tenga acceso y esté configurado para usar la base de conocimiento
+  3. Los datos ingresados en la base de conocimiento sean relevantes para las consultas realizadas
+  4. Los logs del agente en la consola de Bedrock no muestren errores al consultar la base de conocimiento
 
 ## Licencia
 

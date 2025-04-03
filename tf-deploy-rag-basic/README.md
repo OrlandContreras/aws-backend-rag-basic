@@ -354,9 +354,21 @@ Para más información, consulte la [documentación de Amazon Aurora Serverless]
 
 ## Solución de Problemas
 
-- **Error de permisos IAM**: Verifica que tu usuario de AWS tenga permisos suficientes
-- **Error de límites de servicio**: Puede ser necesario solicitar un aumento de cuota para Bedrock
-- **Error de región no soportada**: Confirma que la región seleccionada admite Bedrock y el modelo elegido
+### Problemas de despliegue con Terraform
+- **Error de permisos IAM**: Verifica que tu usuario de AWS tenga permisos suficientes para crear todos los recursos necesarios.
+- **Error de límites de servicio**: Puede ser necesario solicitar un aumento de cuota para Bedrock o para el número de recursos de Lambda/API Gateway.
+- **Error de región no soportada**: Confirma que la región seleccionada admite Bedrock y el modelo específico que estás utilizando. No todos los modelos están disponibles en todas las regiones.
+- **Error al desplegar el frontend**: Si el frontend no se despliega correctamente con `deploy_ui = true`, utiliza el método de despliegue manual descrito anteriormente.
+
+### Problemas con la base de conocimiento
+- **Base de conocimiento no disponible**: Asegúrate de haber configurado manualmente la base de conocimiento en la consola de Amazon Bedrock.
+- **Agente no utiliza la base de conocimiento**: Verifica que el agente esté correctamente configurado para utilizar la base de conocimiento que has creado.
+- **Datos no relevantes**: Si el agente no proporciona respuestas útiles, puede ser necesario revisar y mejorar los datos incluidos en la base de conocimiento.
+
+### Problemas de integración
+- **Error de CORS**: Si la aplicación frontend no puede comunicarse con el backend, verifica la configuración CORS en API Gateway.
+- **Error en las invocaciones Lambda**: Revisa los logs de CloudWatch para identificar posibles errores en la función Lambda.
+- **Tiempo de respuesta lento**: Puede ser debido a la primera invocación (cold start) o al tamaño de la base de conocimiento. Considera ajustar la configuración del modelo o mejorar la organización de tus datos.
 
 ## Referencias
 

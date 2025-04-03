@@ -102,10 +102,28 @@ Para más detalles sobre la configuración manual de la base de conocimiento, co
 - Implementar caché para respuestas frecuentes
 
 ## Solución de Problemas
-Si encuentras errores durante la invocación:
 
-1. Verifica que las variables de entorno estén correctamente configuradas
-2. Confirma que la función Lambda tenga los permisos IAM adecuados
-3. Asegúrate de que el agente de Bedrock esté correctamente configurado y activo
-4. Revisa los logs en CloudWatch para obtener información detallada sobre cualquier error
-5. Si usas RAG, comprueba que la base de conocimiento esté correctamente configurada y accesible por el agente
+### Problemas con la función Lambda
+- **Error 500 al invocar la función**: Verifica los logs en CloudWatch para identificar el origen del error.
+- **Timeout en la respuesta**: Puede ser debido a que la configuración de timeout de la Lambda es insuficiente para el procesamiento del agente. Considera aumentar el timeout en la configuración de Terraform.
+- **Errores de memoria**: Si la Lambda se queda sin memoria, aumenta la asignación de memoria en la configuración de Terraform.
+
+### Problemas con la invocación del agente
+- **Error "AccessDeniedException"**: Verifica que la función Lambda tenga los permisos IAM adecuados para invocar al agente Bedrock.
+- **Error "ValidationException"**: Comprueba que el formato de entrada cumple con los requisitos del agente.
+- **Error "ResourceNotFoundException"**: Confirma que el ID del agente y el ID del alias son correctos en las variables de entorno.
+- **Error "ServiceQuotaExceededException"**: Puede ser necesario solicitar un aumento de cuota para Amazon Bedrock.
+
+### Problemas con la base de conocimiento
+- **El agente no utiliza la base de conocimiento**: Verifica que:
+  1. La base de conocimiento esté correctamente configurada en la consola de Amazon Bedrock
+  2. El agente tenga los permisos necesarios para acceder a la base de conocimiento
+  3. La consulta sea relevante para los datos almacenados en la base de conocimiento
+  4. Los logs del agente en CloudWatch no muestren errores relacionados con la base de conocimiento
+
+### Problemas de integración con API Gateway
+- **Error de CORS**: Comprueba que la configuración CORS del API Gateway sea correcta, especialmente si tienes un frontend que se comunica con esta API.
+- **Errores 4xx o 5xx**: Revisa los logs en CloudWatch para identificar si el error ocurre en la Lambda o en el API Gateway.
+- **Problema con el formato de respuesta**: Asegúrate de que la función Lambda devuelve el formato de respuesta esperado por el cliente.
+
+Para cualquier otro error, revisa los logs detallados en CloudWatch. Estos logs proporcionarán información más específica sobre el origen del problema.
